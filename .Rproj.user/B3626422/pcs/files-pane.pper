@@ -1,0 +1,9 @@
+{
+    "path" : "~/Documents/Programmieren/GIT/spotify_popularity_ml",
+    "sortOrder" : [
+        {
+            "ascending" : true,
+            "columnIndex" : 2
+        }
+    ]
+}
