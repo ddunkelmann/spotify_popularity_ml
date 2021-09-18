@@ -4,6 +4,7 @@
 library(tidyverse)
 library(readr)
 library(caret)
+library(gbm)
 
 
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - #
@@ -61,17 +62,22 @@ edit_artists <- edit_artists %>%
 # Combine all the calculated Features
 X_train <- edit_train %>% 
   select(#id, name, 
-         popularity,
-         duration_ms, danceability, energy, key, 
+         popularity, duration_ms, danceability, energy, key, 
          loudness, speechiness, acousticness, instrumentalness, liveness,
          valence, tempo, 
          release_year, #release_month, release_day, 
          id_artists)
 
 # Join the Artist Features
-X <- X_train %>% 
+training <- X_train %>% 
   left_join(edit_artists, by = c("id_artists" = "id")) %>% 
   select(-c(id_artists, name))
+#y <- edit_train$popularity
+
+# Remove NA Information => Imputate later
+# => 457 Rows (2%)
+training <- training[rowSums(is.na(training)) == 0, ]
+
 
 
 
@@ -79,17 +85,19 @@ X <- X_train %>%
 # 3. Visualize Data
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - #
 
-gg_dance <- ggplot(X_train, aes(y = popularity, x = danceability)) +
-  geom_point(alpha = 0.1) + 
-  geom_smooth()
+# gg_dance <- ggplot(X_train, aes(y = popularity, x = danceability)) +
+#   geom_point(alpha = 0.1) + 
+#   geom_smooth()
+# 
+# gg_energy <- ggplot(X_train, aes(y = popularity, x = energy)) +
+#   geom_point(alpha = 0.1) + 
+#   geom_smooth()
+# 
+# gg_loud <- ggplot(X_train, aes(y = popularity, x = loudness)) +
+#   geom_point(alpha = 0.1) + 
+#   geom_smooth()
 
-gg_energy <- ggplot(X_train, aes(y = popularity, x = energy)) +
-  geom_point(alpha = 0.1) + 
-  geom_smooth()
-
-gg_loud <- ggplot(X_train, aes(y = popularity, x = loudness)) +
-  geom_point(alpha = 0.1) + 
-  geom_smooth()
+featurePlot(x = X, y = y)
 
 
 
@@ -98,15 +106,20 @@ gg_loud <- ggplot(X_train, aes(y = popularity, x = loudness)) +
 # 3. Modelling
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - #
 
-?createDataPartition
-folds <- createFolds(1:nrow(X), k = 5)
+# K-fold für die Trainingsdaten
+fitControl <- trainControl(method = "repeatedcv",
+                           # Fünf Splits ...
+                           number = 5,
+                           # ... Zehn mal wiederholt
+                           repeats = 10)
 
-for(f_index in folds){
-  X_train <- X[f_index,]
-  
-  x_test <- X %>% 
-    anti_join(X_train, by = colnames(X_train))
-  
-  print(paste("Got Split with", paste(head(f_index), collapse = "-")))
-}
-
+# Modell trainieren
+set.seed(64)
+gbmFit1 <- train(popularity ~ .,  # . = Alle Features
+                 data = training, 
+                 method = "gbm", # Gradient Boosting Machine
+                 trControl = fitControl,
+                 ## This last option is actually one
+                 ## for gbm() that passes through
+                 verbose = TRUE)
+gbmFit1
