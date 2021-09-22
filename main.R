@@ -6,6 +6,10 @@ library(readr)
 library(caret)
 library(gbm)
 
+library(doParallel)
+cl <- makePSOCKcluster(2)
+registerDoParallel(cl)
+
 
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - #
 # 1. Load Data 
@@ -104,6 +108,7 @@ featurePlot(x = X, y = y)
 
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - #
 # 3. Modelling
+# Leaderboard Goal: 10.09019 RMSE
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - #
 
 # K-fold für die Trainingsdaten
@@ -111,7 +116,13 @@ fitControl <- trainControl(method = "repeatedcv",
                            # Fünf Splits ...
                            number = 5,
                            # ... Zehn mal wiederholt
-                           repeats = 10)
+                           repeats = 5)
+
+# Parameter zum Testen
+gbmGrid <-  expand.grid(interaction.depth = c(9), 
+                        n.trees = c(300), 
+                        shrinkage = c(0.06),
+                        n.minobsinnode = c(10))
 
 # Modell trainieren
 set.seed(64)
@@ -121,5 +132,6 @@ gbmFit1 <- train(popularity ~ .,  # . = Alle Features
                  trControl = fitControl,
                  ## This last option is actually one
                  ## for gbm() that passes through
-                 verbose = TRUE)
+                 verbose = TRUE,
+                 tuneGrid = gbmGrid)
 gbmFit1
